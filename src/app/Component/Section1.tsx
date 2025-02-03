@@ -1,244 +1,139 @@
-import React from 'react';
+"use client"
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import redheart from '@/app/assets/section1/red heart.png';
-import whiteheart from '@/app/assets/section1/transparent heart.png';
-import Car1 from '@/app/assets/section1/Pcar1.png';
-import Car2 from '@/app/assets/section1/Pcar2.png';
-import Car3 from '@/app/assets/section1/Pcar3.png';
 import fuel from '@/app/assets/section1/fuel.png';
 import stering from '@/app/assets/section1/Stering wheel.png';
 import user from '@/app/assets/section1/profile.png';
+import { client } from '@/sanity/lib/client';
+import { urlFor } from '@/sanity/lib/image';
 
 const Section1 = () => {
-  return (
-    <>
-    {/* this is the parent div for all popular car listings */}
-    <div className='px-[40px] py-[32px] bg-[#F6F7F9]'>
-        {/* div for popular car heading and view all link */}
-        <div className='flex justify-between px-3'>
-            <div>
-                <h1 className='font-semibold font-[PlusJakartaSans] text-[16px] text-[rgba(144,163,191,100%)]'>Popular Car</h1>
-            </div>
-            <div>
-                <h1 className='font-semibold font-[PlusJakartaSans] text-[16px] text-[rgba(53,99,233,100%)]'><Link href={"/category"}>View All</Link></h1>
-            </div>
-        </div>
+  const [wishlist, setWishlist] = useState<string[]>([]); // Product IDs
+  const [popularcars, setPopularCars] = useState<any[]>([]); // All car data
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Loading state for data fetch
 
-        {/* this is the div in which cars listing is present */}
-        <div className='my-2 gap-4 flex  justify-between overflow-hidden'>
-            {/* this is for 1st popular car */}
-            <Link href={"/detailcars"}>
-            <div className='bg-white rounded-lg w-fit p-3 shrink-0'>
+  // Fetch popular cars data on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Query for popular cars from Sanity
+        const query = `*[_type == "Popularcar"]`;
+        const data = await client.fetch(query);
+        setPopularCars(data); // Set the fetched data
+      } catch (error) {
+        console.error('Failed to fetch popular cars data:', error);
+      } finally {
+        setIsLoading(false); // Set loading to false once fetch is done
+      }
+    };
+
+    fetchData();
+
+    // Load wishlist from localStorage
+    const storedWishlist = localStorage.getItem("wishlist");
+    if (storedWishlist) setWishlist(JSON.parse(storedWishlist));
+  }, []); // Empty dependency array ensures this effect runs only once
+
+  // Handle Add/Remove from Wishlist
+  const toggleWishlist = (e: any, productId: string) => {
+    e.preventDefault();
+    setWishlist((prevWishlist) => {
+      const updatedWishlist = prevWishlist.includes(productId)
+        ? prevWishlist.filter((id) => id !== productId) // Remove
+        : [...prevWishlist, productId]; // Add
+
+      // Store the updated wishlist in localStorage
+      localStorage.setItem("wishlist", JSON.stringify(updatedWishlist));
+      return updatedWishlist;
+    });
+  };
+
+  // Show loading spinner until data is fetched
+  if (isLoading) {
+    return <div className="text-center">Loading...</div>;
+  }
+
+  return (
+    <div className='px-[40px] py-[32px] bg-[#F6F7F9]'>
+      {/* div for popular car heading and view all link */}
+      <div className='flex justify-between px-3 '>
+        <div>
+          <h1 className='font-semibold font-[PlusJakartaSans] text-[16px] text-[rgba(144,163,191,100%)]'>Popular Car</h1>
+        </div>
+        <div>
+          <h1 className='font-semibold font-[PlusJakartaSans] text-[16px] text-[rgba(53,99,233,100%)]'>
+            <Link href={"/category"}>View All</Link>
+          </h1>
+        </div>
+      </div>
+
+      {/* this is the div in which cars listing is present */}
+      <div className='my-2 w-fit mx-auto sm:mx-0 sm:w-full justify-center gap-8 flex flex-col sm:flex-row sm:flex-wrap sm:justify-between'>
+        {popularcars.length > 0 ? (
+          popularcars.map((r: any, index: number) => (
+            <Link key={index} href={`detailcars/popularcars/${r._id}`}>
+              <div className='bg-white rounded-lg w-fit p-4 shrink-0'>
+                <h1 className='font-semibold font-[PlusJakartaSans] text-[16px] text-[rgba(144,163,191,100%)]'>{r._type}</h1>
                 {/* this is for car name and heart button */}
-                <div className='flex justify-between'>
-                    <div>
-                        <h1 className='font-bold text-[rgba(26,32,44,100%)] text-[16px]'>Koenigsegg</h1>
-                    </div>
-                    <div>
-                        <button><Image src={redheart} alt='loading' width={20} height={20} /></button>
-                    </div>
+                <div className='flex justify-between items-center'>
+                  <div>
+                    <h1 className='font-bold text-[rgba(26,32,44,100%)] text-[16px]'>{r.name}</h1>
+                  </div>
+                  <div>
+                    {/* wishlist addition */}
+                    <button onClick={(e) => toggleWishlist(e, r._id)} // Pass car ID to toggleWishlist
+                      className={`ml-4 text-3xl ${wishlist.includes(r._id) ? "text-red-500" : "text-gray-400"}`}> ♥
+                    </button>
+                  </div>
                 </div>
 
                 {/* div for car category heading */}
                 <div>
-                    <h1 className='text-[rgba(89,103,128,100%)] font-bold text-[14px]'>Sport</h1>
+                  <h1 className='text-[rgba(89,103,128,100%)] font-bold text-[14px]'>{r.type}</h1>
                 </div>
 
                 {/* div for car image */}
                 <div className=' flex justify-center my-10'>
-                    <Image src={Car1} alt='loading' width={200} height={200}></Image>
+                  <Image src={urlFor(r.image).url()} alt='loading' width={200} height={200}></Image>
                 </div>
 
                 {/* div for specifications */}
                 <div className='flex justify-between'>
-                    <div className='flex gap-1 items-center'>
-                        <Image src={fuel} alt='loading' width={20} height={20}></Image>
-                        <h1>90L</h1>
-                    </div>
-                    <div className='flex gap-1 items-center'>
-                        <Image src={stering} alt='loading' width={20} height={20}></Image>
-                        <h1>Manual</h1>
-                    </div>
-                    <div className='flex gap-1 items-center'>
-                        <Image src={user} alt='loading' width={20} height={20}></Image>
-                        <h1>2 People</h1>
-                    </div>
+                  <div className='flex gap-1 items-center'>
+                    <Image src={fuel} alt='loading' width={20} height={20}></Image>
+                    <h1>{r.fuelCapacity}</h1>
+                  </div>
+                  <div className='flex gap-1 items-center'>
+                    <Image src={stering} alt='loading' width={20} height={20}></Image>
+                    <h1>{r.transmission}</h1>
+                  </div>
+                  <div className='flex gap-1 items-center'>
+                    <Image src={user} alt='loading' width={20} height={20}></Image>
+                    <h1>{r.seatingCapacity}</h1>
+                  </div>
                 </div>
 
                 {/* div for pricing and button */}
                 <div className='flex justify-between items-center my-2'>
-                    <div>
-                        <h1 className='font-[PlusJakartaSans] font-bold text-[20px]'>$99.0/<span className='text-[14px] text-[rgba(26,32,44,100%)]'>day</span></h1>
-                    </div>
-                    
-                    <Link href={"/billing"}><button className='bg-[#3563E9] text-white rounded-md px-6 py-2'>Rent Now</button></Link>
-                    
+                  <div>
+                    <h1 className='font-[PlusJakartaSans] font-bold text-[20px]'>
+                      {r.pricePerDay}/<span className='text-[14px] text-[rgba(26,32,44,100%)]'>day</span>
+                    </h1>
+                  </div>
+                  <Link href={`billing/popularcars/${r._id}`}>
+                    <button className='bg-[#3563E9] text-white rounded-md px-6 py-2'>Rent Now</button>
+                  </Link>
                 </div>
-                
-            </div>
+              </div>
             </Link>
-
-            {/* this is for 2nd popular car */}
-            <Link href={"/detailcars"}>
-                    <div className='bg-white rounded-lg w-fit p-3 shrink-0'>
-                        {/* this is for car name and heart button */}
-                        <div className='flex justify-between'>
-                            <div>
-                                <h1 className='font-bold text-[rgba(26,32,44,100%)] text-[16px]'>Nisan GT - R</h1>
-                            </div>
-                            <div>
-                                <button><Image src={redheart} alt='loading' width={20} height={20} /></button>
-                            </div>
-                        </div>
-
-                        {/* div for car category heading */}
-                        <div>
-                            <h1 className='text-[rgba(89,103,128,100%)] font-bold text-[14px]'>Sport</h1>
-                        </div>
-
-                        {/* div for car image */}
-                        <div className=' flex justify-center my-10'>
-                            <Image src={Car2} alt='loading' width={200} height={200}></Image>
-                        </div>
-
-                        {/* div for specifications */}
-                        <div className='flex justify-between'>
-                            <div className='flex gap-1 items-center'>
-                                <Image src={fuel} alt='loading' width={20} height={20}></Image>
-                                <h1>80L</h1>
-                            </div>
-                            <div className='flex gap-1 items-center'>
-                                <Image src={stering} alt='loading' width={20} height={20}></Image>
-                                <h1>Manual</h1>
-                            </div>
-                            <div className='flex gap-1 items-center'>
-                                <Image src={user} alt='loading' width={20} height={20}></Image>
-                                <h1>2 People</h1>
-                            </div>
-                        </div>
-
-                        {/* div for pricing and button */}
-                        <div className='flex justify-between items-center my-2'>
-                            <div>
-                                <h1 className='font-[PlusJakartaSans] font-bold text-[20px]'>$80.0/<span className='text-[14px] text-[rgba(26,32,44,100%)]'>day</span></h1>
-                            </div>
-                            
-                            <Link href={"/billing"}><button className='bg-[#3563E9] text-white rounded-md px-6 py-2'>Rent Now</button></Link>
-                            
-                        </div>
-                        
-                    </div>
-                    </Link>
-
-            {/* this is for 3rd popular car */}
-            <Link href={"/detailcars"}>
-            <div className='bg-white rounded-lg w-fit p-3 hidden md:block shrink-0'>
-                {/* this is for car name and heart button */}
-                <div className='flex justify-between'>
-                    <div>
-                        <h1 className='font-bold text-[rgba(26,32,44,100%)] text-[16px]'>Rolls - Royce</h1>
-                    </div>
-                    <div>
-                        <button><Image src={redheart} alt='loading' width={20} height={20} /></button>
-                    </div>
-                </div>
-
-                {/* div for car category heading */}
-                <div>
-                    <h1 className='text-[rgba(89,103,128,100%)] font-bold text-[14px]'>Sedan</h1>
-                </div>
-
-                {/* div for car image */}
-                <div className='flex justify-center my-10'>
-                    <Image src={Car3} alt='loading' width={200} height={200}></Image>
-                </div>
-
-                {/* div for specifications */}
-                <div className='flex justify-between'>
-                    <div className='flex gap-1 items-center'>
-                        <Image src={fuel} alt='loading' width={20} height={20}></Image>
-                        <h1>70L</h1>
-                    </div>
-                    <div className='flex gap-1 items-center'>
-                        <Image src={stering} alt='loading' width={20} height={20}></Image>
-                        <h1>Manual</h1>
-                    </div>
-                    <div className='flex gap-1 items-center'>
-                        <Image src={user} alt='loading' width={20} height={20}></Image>
-                        <h1>4 People</h1>
-                    </div>
-                </div>
-
-                {/* div for pricing and button */}
-                <div className='flex justify-between items-center my-2'>
-                    <div>
-                        <h1 className='font-[PlusJakartaSans] font-bold text-[20px]'>$96.00/<span className='text-[14px] text-[rgba(26,32,44,100%)]'>day</span></h1>
-                    </div>
-                    
-                    <Link href={"/billing"}><button className='bg-[#3563E9] text-white rounded-md px-6 py-2'>Rent Now</button></Link>
-                    
-                </div>
-                
-            </div>
-            </Link>
-
-            {/* this is for 4th same as 2nd popular car */}
-            <Link href={"/detailcars"}>
-            <div className='bg-white rounded-lg w-fit p-3 hidden lg:block shrink-0'>
-                {/* this is for car name and heart button */}
-                <div className='flex justify-between'>
-                    <div>
-                        <h1 className='font-bold text-[rgba(26,32,44,100%)] text-[16px]'>NissanGT - R</h1>
-                    </div>
-                    <div>
-                        <button><Image src={whiteheart} alt='loading' width={20} height={20} /></button>
-                    </div>
-                </div>
-
-                {/* div for car category heading */}
-                <div>
-                    <h1 className='text-[rgba(89,103,128,100%)] font-bold text-[14px]'>Sport</h1>
-                </div>
-
-                {/* div for car image */}
-                <div className='flex justify-center my-10'>
-                    <Image src={Car2} alt='loading' width={200} height={200}></Image>
-                </div>
-
-                {/* div for specifications */}
-                <div className='flex justify-between'>
-                    <div className='flex gap-1 items-center'>
-                        <Image src={fuel} alt='loading' width={20} height={20}></Image>
-                        <h1>80L</h1>
-                    </div>
-                    <div className='flex gap-1 items-center'>
-                        <Image src={stering} alt='loading' width={20} height={20}></Image>
-                        <h1>Manual</h1>
-                    </div>
-                    <div className='flex gap-1 items-center'>
-                        <Image src={user} alt='loading' width={20} height={20}></Image>
-                        <h1>2 People</h1>
-                    </div>
-                </div>
-
-                {/* div for pricing and button */}
-                <div className='flex justify-between items-center my-2'>
-                    <div>
-                        <h1 className='font-[PlusJakartaSans] font-bold text-[20px]'>$80.00/<span className='text-[14px] text-[rgba(26,32,44,100%)]'>day</span></h1>
-                        <h1 className='text-[rgba(89,103,128,100%)] line-through font-[14px]'>$100.0</h1>
-                    </div>
-                    
-                    <Link href={"/billing"}><button className='bg-[#3563E9] text-white rounded-md px-6 py-2'>Rent Now</button></Link>
-                    
-                </div>
-                
-            </div>
-            </Link>
-        </div>
+          ))
+        ) : (
+          <p>No cars available at the moment.</p>
+        )}
+      </div>
     </div>
-    </>
-  )
-}
+  );
+};
 
-export default Section1
+export default Section1;
